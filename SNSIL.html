@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My experiment</title>
+    <script src="https://unpkg.com/jspsych@8.2.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+    <link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body></body>
+  <script>
+
+    /* initialize jsPsych */
+    var jsPsych = initJsPsych({
+      on_finish: function() {
+        jsPsych.data.displayData();
+      }
+    });
+
+    /* create timeline */
+    var timeline = [];
+
+    /* preload images */
+    var preload = {
+      type: jsPsychPreload,
+      images: ['stim/O1.1.png', 'stim/O1.2.png', 'stim/O1.3.png', 'stim/O2.1.png', 'stim/O2.2.png', 'stim/O2.3.png', 'stim/O3.1.png', 'stim/O3.2.png', 'stim/O3.3.png', 'stim/O4.1.png', 'stim/O4.2.png', 'stim/O4.3.png', 'stim/S1.png', 'stim/S2.png', 'stim/S3.png', 'stim/S4.png','stim/nO1.1.png', 'stim/nO1.2.png', 'stim/nO1.3.png', 'stim/nO2.1.png', 'stim/nO2.2.png', 'stim/nO2.3.png', 'stim/nO3.1.png', 'stim/nO3.2.png', 'stim/nO3.3.png', 'stim/nO4.1.png', 'stim/nO4.2.png', 'stim/nO4.3.png', 'stim/sO1.png', 'stim/sO2.png', 'stim/C1.png', 'stim/C2.png', 'stim/C3.png', 'stim/C4.png']
+    };
+    timeline.push(preload);
+
+     /* define welcome message trial */
+    var welcome = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: "Welcome to the experiment. Press any key to begin."
+    };
+    timeline.push(welcome);
+
+    /* define instructions trial */
+    var instructions = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+        <p>You will see two pictures of a character in a blue shirt doing an action.</p>
+        <p>Then you will see two pictures of a different character in a red shirt doing another action.</p>
+        <p>You must press the <strong>"A"</strong> and <strong>"L"</strong> keys as quickly as you can to indicate whether the actions of the blue shirt character will lead the red shirt character to do action "A" or action "L."</p>
+        <p>Press any key to begin.</p>
+      `,
+      post_trial_gap: 2000
+    };
+    timeline.push(instructions);
+
+    /* start the experiment */
+    jsPsych.run(timeline);
+  </script>
+</html>
