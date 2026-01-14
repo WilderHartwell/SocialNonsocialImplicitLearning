@@ -1,0 +1,971 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Adult Social Learning</title>
+  <script src="https://unpkg.com/jspsych@8.2.2"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice@2.1.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-multi-select@2.1.0"></script>
+  <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-text@2.1.0"></script>
+  <link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" />
+</head>
+<body></body>
+<script>
+
+// Read SONA ID from URL (?sona_id=XXXX) — no jsPsych needed
+//const urlParams = new URLSearchParams(window.location.search);
+//const sona_id = urlParams.get('sona_id');
+
+// Initialize jsPsych
+const jsPsych = initJsPsych(//{
+  //on_finish: () => {
+    //window.location.assign(
+    //  "https://yourschool.sona-systems.com/webstudy_credit.aspx?" +
+    //  "experiment_id=123" +
+    //  "&credit_token=4e48f9b638a" +
+    //  "&survey_code=" + sona_id
+    //);
+//  }
+//}
+);
+
+
+// Generate a participant ID
+const participantID = jsPsych.randomization.randomID(10);
+
+// Add participant ID to EVERY trial's data
+jsPsych.data.addProperties({
+  ID: participantID
+});
+    // -------------------------------
+    // Helpers
+    // -------------------------------
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+    function getBaseName(path){ return path.split('/').pop(); }
+
+/* -------------------------------
+   1. S stimuli
+--------------------------------*/
+const Simages = [
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S1.png',
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S2.png',
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S3.png',
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S4.png'
+];
+
+// Generate all unique S pairs
+const S_pairs = [];
+for (let i = 0; i < Simages.length; i++) {
+  for (let j = i + 1; j < Simages.length; j++) {
+    S_pairs.push({ stim1: Simages[i], stim2: Simages[j] });
+  }
+}
+
+/* -------------------------------
+   2. O stimuli
+--------------------------------*/
+const O1 = ['O1.1.png','O1.2.png','O1.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+const O2 = ['O2.1.png','O2.2.png','O2.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+const O3 = ['O3.1.png','O3.2.png','O3.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+const O4 = ['O4.1.png','O4.2.png','O4.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+
+const O_groups = [O1, O2, O3, O4];
+
+// Generate all possible cross-group O pairs
+const O_pairs = [];
+for (let i = 0; i < O_groups.length - 1; i++) {
+  for (let j = i + 1; j < O_groups.length; j++) {
+    const groupA = O_groups[i];
+    const groupB = O_groups[j];
+    for (let a = 0; a < groupA.length; a++) {
+      for (let b = 0; b < groupB.length; b++) {
+        O_pairs.push({ stim1: groupA[a], stim2: groupB[b] });
+      }
+    }
+  }
+}
+
+/* -------------------------------
+   3. S->O probability table
+--------------------------------*/
+const S_O_probabilities = {
+  'S1.png': {'O1.1.png':0.75,'O1.2.png':0.8,'O1.3.png':0.89,'O2.1.png':0.2,'O2.2.png':0.32,'O2.3.png':0.27,'O3.1.png':0.65,'O3.2.png':0.7,'O3.3.png':0.55,'O4.1.png':0.28,'O4.2.png':0.39,'O4.3.png':0.19},
+  'S2.png': {'O1.1.png':0.36,'O1.2.png':0.4,'O1.3.png':0.2,'O2.1.png':0.72,'O2.2.png':0.9,'O2.3.png':0.85,'O3.1.png':0.5,'O3.2.png':0.6,'O3.3.png':0.45,'O4.1.png':0.12,'O4.2.png':0.32,'O4.3.png':0.4},
+  'S3.png': {'O1.1.png':0.12,'O1.2.png':0.3,'O1.3.png':0.27,'O2.1.png':0.55,'O2.2.png':0.43,'O2.3.png':0.62,'O3.1.png':0.75,'O3.2.png':0.8,'O3.3.png':0.83,'O4.1.png':0.52,'O4.2.png':0.47,'O4.3.png':0.63},
+  'S4.png': {'O1.1.png':0.31,'O1.2.png':0.4,'O1.3.png':0.14,'O2.1.png':0.55,'O2.2.png':0.48,'O2.3.png':0.62,'O3.1.png':0.67,'O3.2.png':0.7,'O3.3.png':0.54,'O4.1.png':0.72,'O4.2.png':0.87,'O4.3.png':0.9}
+};
+
+/* -------------------------------
+   4. C/nO stimuli
+--------------------------------*/
+const Cimages = [
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C1.png',
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C2.png',
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C3.png',
+  'https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C4.png'
+];
+
+const C_pairs = [];
+for (let i = 0; i < Cimages.length; i++) {
+  for (let j = i + 1; j < Cimages.length; j++) {
+    C_pairs.push({ stim1: Cimages[i], stim2: Cimages[j] });
+  }
+}
+
+const nO1 = ['nO1.1.png','nO1.2.png','nO1.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+const nO2 = ['nO2.1.png','nO2.2.png','nO2.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+const nO3 = ['nO3.1.png','nO3.2.png','nO3.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+const nO4 = ['nO4.1.png','nO4.2.png','nO4.3.png'].map(f => `https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/${f}`);
+
+const nO_groups = [nO1,nO2,nO3,nO4];
+const nO_pairs = [];
+for (let i = 0; i < nO_groups.length-1; i++) {
+  for (let j = i+1; j<nO_groups.length; j++) {
+    const groupA = nO_groups[i];
+    const groupB = nO_groups[j];
+    for (let a=0;a<groupA.length;a++){
+      for (let b=0;b<groupB.length;b++){
+        nO_pairs.push({stim1:groupA[a], stim2:groupB[b]});
+      }
+    }
+  }
+}
+
+/* -------------------------------
+   5. C->nO probability table
+--------------------------------*/
+const C_nO_probabilities = {
+  'C1.png': {'nO1.1.png':0.75,'nO1.2.png':0.87,'nO1.3.png':0.9,'nO2.1.png':0.56,'nO2.2.png':0.65,'nO2.3.png':0.46,'nO3.1.png':0.35,'nO3.2.png':0.26,'nO3.3.png':0.33,'nO4.1.png':0.67,'nO4.2.png':0.54,'nO4.3.png':0.43},
+  'C2.png': {'nO1.1.png':0.43,'nO1.2.png':0.57,'nO1.3.png':0.68,'nO2.1.png':0.84,'nO2.2.png':0.76,'nO2.3.png':0.8,'nO3.1.png':0.24,'nO3.2.png':0.27,'nO3.3.png':0.3,'nO4.1.png':0.45,'nO4.2.png':0.63,'nO4.3.png':0.54},
+  'C3.png': {'nO1.1.png':0.21,'nO1.2.png':0.32,'nO1.3.png':0.15,'nO2.1.png':0.42,'nO2.2.png':0.64,'nO2.3.png':0.48,'nO3.1.png':0.78,'nO3.2.png':0.82,'nO3.3.png':0.89,'nO4.1.png':0.13,'nO4.2.png':0.39,'nO4.3.png':0.33},
+  'C4.png': {'nO1.1.png':0.23,'nO1.2.png':0.39,'nO1.3.png':0.15,'nO2.1.png':0.22,'nO2.2.png':0.33,'nO2.3.png':0.26,'nO3.1.png':0.4,'nO3.2.png':0.38,'nO3.3.png':0.14,'nO4.1.png':0.74,'nO4.2.png':0.87,'nO4.3.png':0.77}
+};
+
+/* -------------------------------
+   6. Preload images
+--------------------------------*/
+const preloadImages = Array.from(new Set([...Simages,...O_groups.flat(),...Cimages,...nO_groups.flat()]));
+const timeline = [];
+timeline.push({ type: jsPsychPreload, images: preloadImages });
+
+// Welcome screen
+var welcome = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<h2>Welcome to the experiment!</h2>
+               <p>Press any key to begin.</p>`,
+    post_trial_gap: 1000
+};
+
+
+timeline.push(welcome);
+// Demographic questions 
+var demographics = {
+    type: jsPsychSurveyMultiChoice,
+    preamble: `<p><h3>Please answer the following demographic questions. Your answers will not affect your ability to participate.</h3></p>`,
+    questions: [
+      {
+        prompt: "What is your age?",
+        name: "age",
+        options: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+", "Prefer not to say"],
+        required: true
+      },
+      {
+        prompt: "What is your genderr?",
+        name: "gender",
+        options: ["Man", "Woman", "Non-binary/other", "Prefer not to say"],
+        required: true
+      },
+      {
+        prompt: "What is your race?",
+        name: "race",
+        options: ["White", "Black or African American", "Asian", "Hispanic or Latino", "Native American or Alaska Native", "Native Hawaiian or Other Pacific Islander", "Mixed Race", "Other", "Prefer not to say"],
+        required: true
+      }
+    ]}
+timeline.push(demographics);
+
+// Instructions for survey
+var SRS_instructions = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<p><h3>One more step before you begin the experiment task: please answer this short survey with how true each statement is for you.</h3></p>
+                <p> Press any key to continue.</p>`,
+    post_trial_gap: 1000
+};
+timeline.push(SRS_instructions);
+
+// 4, 7, 8, 13,16, 18, 22, 23, 29, 30, 33, 37, 38, 39, 42, and 54
+
+// Shortened Social Responsiveness Scale (SRS) - Adult Self Report
+// See if you can put in the trial data what each question answer is. I think that might be a way to get all of the answers to save as seperate rows
+// Build SRS as a sequence of single-question trials so each answer is its own trial/row
+const SRS_questions = [
+  { name: 'SRS1', prompt: "When under stress, I engage in rigid or inflexible patterns of behavior that seem odd to people.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS2', prompt: "I am usually aware of how others are feeling.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS3', prompt: "I behave in ways that seem strange or bizarre to others.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS4', prompt: "I am awkward in turn-taking interactions with others (for example, I have a hard time keeping up with the give-and-take of a conversation).", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS5', prompt: "I avoid eye contact or am told that I have unusal eye contact.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS6', prompt: "I have sensory interests that others find unusal (for example, smelling or looking at things in a special way).", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS7', prompt: "I interact appropriately with other adults.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS8', prompt: "I do not join group activities or social events unless prompted or strongly urged to do so.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS9', prompt: "I am regarded by others as odd or weird.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS10', prompt: "I become upset in situations with lots of things going on.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS11', prompt: "My behavior is socially awkward, even when I am trying to be polite.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS12', prompt: "I have difficulty relating to adults outside of my family.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS13', prompt: "I respond appropriately to mood changes in others (for ecample, when a friend's mood changes from happy to sad).", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS14', prompt: "People think I am interested in too few topics, or that I get too carried away with those topics.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS15', prompt: "I am overly sensitive to certain sounds, textures, or smells.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] },
+  { name: 'SRS16', prompt: "I tend to think about people in the same way that I do objects.", options: ['Almost Always True', 'Often True', 'Sometimes True', 'Not True'] }
+];
+
+const SRS_trials = SRS_questions.map((q, i) => ({
+  type: jsPsychSurveyMultiChoice,
+  preamble: `<p>How true is the following statement for you?</p>`,
+  questions: [ { prompt: q.prompt, name: q.name, options: q.options, required: true } ],
+  data: { question_index: i+1 },
+  on_finish: function(data){
+    // parse responses and write selected option into top-level field (question name)
+    let resp = data.responses;
+    if (typeof resp === 'string'){
+      try { resp = JSON.parse(resp); } catch(e){ resp = {}; }
+    }
+    // resp will have shape { Qx: 'Selected option' }
+    const val = resp && resp[q.name] ? resp[q.name] : null;
+    data[q.name] = val;
+  }
+}));
+
+// push each single-question SRS trial so each answer becomes its own trial/row
+timeline.push(...SRS_trials);
+/* -------------------------------
+   7. Instructions for experiment
+--------------------------------*/
+var social_instructions ={
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `<p>People do things and other people have responses to them.</p>
+             <p>In this experiment task you will see a character in a <span style="font-weight:bold; color: #A90114">red shirt</span> doing something and then the character in the <span style="font-weight:bold; color: #35519A">blue shirt</span> will respond to them.</p>
+             <p>You will see the letter <b>A</b> and <b>L</b> under the character responses.</p>
+             <p>Press <b>A</b> or <b>L</b> to answer which response you think <span style="font-weight:bold; color: #35519A">blue shirt</span> will have to <span style="font-weight:bold; color: #A90114">red shirt</span>.</p>
+             <p>You will receive feedback on whether or not your answer was correct after each trial.</p>
+             <p>You will complete four sections of this task.</p>
+             <p>Press any key to begin.</p>`,
+  post_trial_gap: 2000};
+
+  var nonsocial_instructions = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<p>In this experiment task you will see a card with a pattern on it, and then you will see symbols for different types of weather.</p>
+               <p>You will see the letter <b>A</b> and <b>L</b> under the weather symbols.</p>
+               <p>Press <b>A</b> or <b>L</b> to answer which weather symbol you think goes with the card pattern.</p>
+               <p>You will receive feedback on whether or not your answer was correct after each trial.</p>
+               <p>You will complete four sections of this task.</p>
+               <p>Press any key to begin.</p>`,
+    post_trial_gap: 2000};
+
+// Build feedback trials
+function addTrialWithFeedback(stim1, stim2, correct_answer, task_label, width=500) {
+  const trial = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                <img src="${stim1}" style="width:500px;height:auto;">
+                <img src="${stim2}" style="width:500px;height:auto;">
+              </div>
+              <p style="margin-top:20px; word-spacing: 450px; font-size:32px"><b>A</b> <b>L</b></p>`,
+    choices:['a','l'],
+    trial_duration:5000,
+    data:{task:task_label, stim1, stim2, correct_answer},
+    on_finish: data => {data.correct = data.response === correct_answer;}
+  };
+
+  const feedback = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: function(){
+      const last_trial = jsPsych.data.get().last(1).values()[0];
+      return last_trial.correct ? '<p style="color:green;font-size:24px;">Correct!</p>'
+                                : '<p style="color:red;font-size:24px;">Incorrect</p>';
+    },
+    choices:"NO_KEYS",
+    trial_duration:1000
+  };
+
+  // allow pushing into a provided timeline array (useful for building blocks)
+  // if no targetTimeline provided, push to the global `timeline`
+  const targetTimeline = (arguments.length >= 6 && arguments[5]) ? arguments[5] : timeline;
+  targetTimeline.push(trial);
+  targetTimeline.push(feedback);
+}
+/* ============================================================
+   NEW SECTION: Build S/O block timeline and C/nO block timeline
+   (but DO NOT push them to main timeline yet)
+============================================================ */
+
+// --- S/O BLOCK ---
+let SO_block = [];
+
+// Expand S pairs (2× each)
+let S_repeated = [];
+S_pairs.forEach(pair => {
+  for (let r = 0; r < 9; r++) { // Change number of repetitions here
+    S_repeated.push({ ...pair });
+  }
+});
+shuffle(S_repeated);
+
+// Build interleaved S → O(+feedback)
+S_repeated.forEach((S_pair, i) => {
+
+  // S trial
+  SO_block.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                <img src="${S_pair.stim1}" style="width:500px;height:auto;">
+                <img src="${S_pair.stim2}" style="width:500px;height:auto;">
+              </div>`,
+    choices: "NO_KEYS",
+    trial_duration: 2500,
+    data: { task: 'S_pair', stim1: S_pair.stim1, stim2: S_pair.stim2 }
+  });
+
+  // O trial chosen by cycling
+  const O_pair = O_pairs[i % O_pairs.length];
+  const S1_base = S_pair.stim1.split('/').pop();
+  const S2_base = S_pair.stim2.split('/').pop();
+  const stim1_name = O_pair.stim1.split('/').pop();
+  const stim2_name = O_pair.stim2.split('/').pop();
+
+  const p1 = (S_O_probabilities[S1_base][stim1_name] + S_O_probabilities[S2_base][stim1_name]) / 2;
+  const p2 = (S_O_probabilities[S1_base][stim2_name] + S_O_probabilities[S2_base][stim2_name]) / 2;
+
+  const correct_answer = p1 >= p2 ? 'a' : 'l';
+
+  // Add O trial with feedback
+  SO_block.push({
+    timeline: [
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                    <img src="${O_pair.stim1}" style="width:500px;height:auto;">
+                    <img src="${O_pair.stim2}" style="width:500px;height:auto;">
+                  </div>
+                  <p style="margin-top:20px; word-spacing:450px; font-size:32px;"><b>A</b> <b>L</b></p>`,
+        choices:['a','l'],
+        trial_duration:5000,
+        data:{task:'O_pair', stim1:O_pair.stim1, stim2:O_pair.stim2, correct_answer},
+        on_finish: data => {
+
+  // normalize response
+  if (data.response) {
+
+    // if jsPsych recorded keycodes (numbers)
+    if (typeof data.response === 'number') {
+      data.response = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response);
+    }
+
+    // convert to lowercase
+    if (typeof data.response === 'string') {
+      data.response = data.response.toLowerCase();
+    }
+  }
+
+  // compute correctness *after* normalization
+  data.correct = data.response === correct_answer.toLowerCase();
+      }},
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: function(){
+          const last = jsPsych.data.get().last(1).values()[0];
+          return last.correct ?
+            '<p style="color:green;font-size:32px;">CORRECT</p>' :
+            '<p style="color:red;font-size:32px;">INCORRECT</p>';
+        },
+        choices:"NO_KEYS",
+        trial_duration:1000
+      }
+    ]
+  });
+});
+
+// --- Test Block Instructions ---
+var test_instructions = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<p>In this section of the experiment, you will no longer receive feedback.<p>
+               <p>Press any key to begin.</p>`,
+    post_trial_gap: 2000};
+
+// --- S/O TEST BLOCK ---
+let SO_test_block = [];
+
+// Expand S pairs (2× each)
+let S_test_repeated = [];
+S_pairs.forEach(pair => {
+  for (let r = 0; r < 9; r++) { // Change number of repetitions here
+    S_test_repeated.push({ ...pair });
+  }
+});
+shuffle(S_test_repeated);
+
+// Build interleaved S → O(+feedback)
+S_test_repeated.forEach((S_pair, i) => {
+
+  // S trial
+  SO_test_block.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                <img src="${S_pair.stim1}" style="width:500px;height:auto;">
+                <img src="${S_pair.stim2}" style="width:500px;height:auto;">
+              </div>`,
+    choices: "NO_KEYS",
+    trial_duration: 2500,
+    data: { task: 'S_pair test', stim1: S_pair.stim1, stim2: S_pair.stim2 }
+  });
+
+  // O trial chosen by cycling
+  const O_pair = O_pairs[i % O_pairs.length];
+  const S1_base = S_pair.stim1.split('/').pop();
+  const S2_base = S_pair.stim2.split('/').pop();
+  const stim1_name = O_pair.stim1.split('/').pop();
+  const stim2_name = O_pair.stim2.split('/').pop();
+
+  const p1 = (S_O_probabilities[S1_base][stim1_name] + S_O_probabilities[S2_base][stim1_name]) / 2;
+  const p2 = (S_O_probabilities[S1_base][stim2_name] + S_O_probabilities[S2_base][stim2_name]) / 2;
+
+  const correct_answer = p1 >= p2 ? 'a' : 'l';
+
+  // Add O trial without feedback
+  SO_test_block.push({
+    timeline: [
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                    <img src="${O_pair.stim1}" style="width:500px;height:auto;">
+                    <img src="${O_pair.stim2}" style="width:500px;height:auto;">
+                  </div>
+                  <p style="margin-top:20px; word-spacing:450px; font-size:32px;"><b>A</b> <b>L</b></p>`,
+        choices:['a','l'],
+        trial_duration:5000,
+        post_trial_gap: 1000,
+        data:{task:'O_pair test', stim1:O_pair.stim1, stim2:O_pair.stim2, correct_answer},
+        on_finish: data => { data.correct = data.response === correct_answer; }
+      }
+    ]
+  });
+});
+
+
+
+// --- C/nO BLOCK ---
+let CnO_block = [];
+
+// Build 2× C trials
+let C_repeated = [];
+C_pairs.forEach(pair => {
+  for (let r = 0; r < 9; r++) { // Change number of repetitions here
+    C_repeated.push({ stim1: pair.stim1, stim2: pair.stim2 });
+  }
+});
+shuffle(C_repeated);
+
+// Build nO_trials list
+let nO_trials = [];
+nO_pairs.forEach(p => nO_trials.push({ ...p }));
+while (nO_trials.length < C_repeated.length) {
+  nO_trials.push(nO_pairs[Math.floor(Math.random()*nO_pairs.length)]);
+}
+shuffle(nO_trials);
+
+// Build interleaved C → nO(+feedback)
+for (let i = 0; i < C_repeated.length; i++) {
+
+  const C_pair = C_repeated[i];
+  const nOpair = nO_trials[i];
+
+  const C_base = C_pair.stim1.split('/').pop();  // C1.png etc
+  const nO1_base = nOpair.stim1.split('/').pop();
+  const nO2_base = nOpair.stim2.split('/').pop();
+
+  const p1 = C_nO_probabilities[C_base][nO1_base];
+  const p2 = C_nO_probabilities[C_base][nO2_base];
+
+  const correct_answer = p1 >= p2 ? 'a' : 'l';
+
+  // Add C trial
+  CnO_block.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                <img src="${C_pair.stim1}" style="width:500px;height:auto;">
+                <img src="${C_pair.stim2}" style="width:500px;height:auto;">
+              </div>`,
+    choices:"NO_KEYS",
+    trial_duration:2500,
+    data:{ task:"C_pair", stim1:C_pair.stim1, stim2:C_pair.stim2 }
+  });
+
+  // Add nO trial with feedback
+  CnO_block.push({
+    timeline: [
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                    <img src="${nOpair.stim1}" style="width:500px;height:auto;">
+                    <img src="${nOpair.stim2}" style="width:500px;height:auto;">
+                  </div>
+                  <p style="margin-top:20px; word-spacing:450px; font-size:32px;"><b>A</b> <b>L</b></p>`,
+        choices:['a','l'],
+        trial_duration:5000,
+        data:{task:'nO_pair', stim1:nOpair.stim1, stim2:nOpair.stim2, correct_answer},
+        on_finish: data => {
+
+  // normalize response
+  if (data.response) {
+
+    // if jsPsych recorded keycodes (numbers)
+    if (typeof data.response === 'number') {
+      data.response = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response);
+    }
+
+    // convert to lowercase
+    if (typeof data.response === 'string') {
+      data.response = data.response.toLowerCase();
+    }
+  }
+
+  // compute correctness *after* normalization
+  data.correct = data.response === correct_answer.toLowerCase();
+}
+      },
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: function(){
+          const last = jsPsych.data.get().last(1).values()[0];
+          return last.correct ?
+            '<p style="color:green;font-size:32px;">CORRECT</p>' :
+            '<p style="color:red;font-size:32px;">INCORRECT</p>';
+        },
+        choices:"NO_KEYS",
+        trial_duration:1000
+      }
+    ]
+  });
+}
+
+
+// --- C/nO TEST BLOCK ---
+let CnO_test_block = [];
+
+// Build C trial reptitions
+let C_test_repeated = [];
+C_pairs.forEach(pair => {
+  for (let r = 0; r < 9; r++) { // Change number of repetitions here
+    C_test_repeated.push({ stim1: pair.stim1, stim2: pair.stim2 });
+  }
+});
+shuffle(C_test_repeated);
+
+// Build nO_trials list
+let nO_test_trials = [];
+nO_pairs.forEach(p => nO_test_trials.push({ ...p }));
+while (nO_test_trials.length < C_repeated.length) {
+  nO_test_trials.push(nO_pairs[Math.floor(Math.random()*nO_pairs.length)]);
+}
+shuffle(nO_test_trials);
+
+// Build interleaved C → nO(+feedback)
+for (let i = 0; i < C_test_repeated.length; i++) {
+
+  const C_pair = C_test_repeated[i];
+  const nOpair = nO_test_trials[i];
+
+  const C_base = C_pair.stim1.split('/').pop();  // C1.png etc
+  const nO1_base = nOpair.stim1.split('/').pop();
+  const nO2_base = nOpair.stim2.split('/').pop();
+
+  const p1 = C_nO_probabilities[C_base][nO1_base];
+  const p2 = C_nO_probabilities[C_base][nO2_base];
+
+  const correct_answer = p1 >= p2 ? 'a' : 'l';
+
+  // Add C trial
+  CnO_test_block.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                <img src="${C_pair.stim1}" style="width:500px;height:auto;">
+                <img src="${C_pair.stim2}" style="width:500px;height:auto;">
+              </div>`,
+    choices:"NO_KEYS",
+    trial_duration:2500,
+    data:{ task:"C_pair test", stim1:C_pair.stim1, stim2:C_pair.stim2 }
+  });
+
+  // Add nO trial without feedback
+  CnO_test_block.push({
+    timeline: [
+      {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus:`<div style="display:flex;justify-content:center;align-items:center;gap:60px;">
+                    <img src="${nOpair.stim1}" style="width:500px;height:auto;">
+                    <img src="${nOpair.stim2}" style="width:500px;height:auto;">
+                  </div>
+                  <p style="margin-top:20px; word-spacing:450px; font-size:32px;"><b>A</b> <b>L</b></p>`,
+        choices:['a','l'],
+        trial_duration:5000,
+        post_trial_gap: 1000,
+        data:{task:'nO_pair test', stim1:nOpair.stim1, stim2:nOpair.stim2, correct_answer},
+        on_finish: data => { data.correct = data.response === correct_answer; }
+      }
+    ]
+  });
+}
+
+var break_trial = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<p>You can take a short break now. Press any key when you are ready to continue.</p>`,
+    post_trial_gap: 1000
+};
+
+/* ============================================================
+   TRUE 50/50 COUNTERBALANCING ACROSS PARTICIPANTS
+============================================================ */
+
+let socialFirst = sessionStorage.getItem("socialFirst");
+if (socialFirst === null) {
+  socialFirst = (Math.random() < 0.5);
+  sessionStorage.setItem("socialFirst", socialFirst);
+} else {
+  socialFirst = (socialFirst === "true");
+}
+
+console.log("socialFirst =", socialFirst);
+
+/* ============================================================
+   Add blocks to actual timeline in chosen order
+============================================================ */
+
+if (socialFirst) {
+  timeline.push(social_instructions);
+  timeline.push(...SO_block);
+  timeline.push(break_trial);
+  timeline.push(...SO_block);
+  timeline.push(break_trial);
+  timeline.push(...SO_block);
+  timeline.push(break_trial);
+  timeline.push(test_instructions);
+  timeline.push({timeline: SO_test_block});
+  timeline.push({ type: jsPsychHtmlKeyboardResponse, stimulus:"<p><h3>You're halfway done! Please take as long of a break as you need.</h3></p> <p>When you're ready, press any key to continue.</p>"});
+  timeline.push(nonsocial_instructions)
+  timeline.push(...CnO_block);
+  timeline.push(break_trial);
+  timeline.push(...CnO_block);
+  timeline.push(break_trial);
+  timeline.push(...CnO_block);
+  timeline.push(break_trial);
+  timeline.push(test_instructions);
+  timeline.push(...CnO_test_block);
+} else {
+  timeline.push(nonsocial_instructions);
+  timeline.push(...CnO_block);
+  timeline.push(break_trial);
+  timeline.push(...CnO_block);
+  timeline.push(break_trial);
+  timeline.push(...CnO_block);
+  timeline.push(break_trial);
+  timeline.push(test_instructions);
+  timeline.push(...CnO_test_block);
+  timeline.push({ type: jsPsychHtmlKeyboardResponse, stimulus:"<p><h3>You're halfway done! Please take as long of a break as you need.</h3></p> <p>When you're ready, press any key to continue.</p>"});
+  timeline.push(social_instructions);
+  timeline.push(...SO_block);
+  timeline.push(break_trial);
+  timeline.push(...SO_block);
+  timeline.push(break_trial);
+  timeline.push(...SO_block);
+  timeline.push(break_trial);
+  timeline.push(test_instructions);
+  timeline.push({timeline: SO_test_block});
+}
+
+// POST SURVEY
+// Social post survey questions defined
+var post_survey_social = [
+   {
+     prompt: `<p>Given what red shirt is doing here, what three actions is blue shirt most likely to do?</p>
+     <p><i>(Select <b>3</b>)</i></p>
+     <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S1.png" style="width:250px;"></p>`,
+     name: "Post_S1",
+
+
+     options: [
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.3.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.3.png" style="width:250px;">',
+
+       
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.2.png" style="width:250px;">'
+       
+     ],
+   },
+   {
+     prompt: `<p>Given what red shirt is doing here, what three actions is blue shirt most likely to do?</p>
+     <p><i>(Select <b>3</b>)</i></p>
+     <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S2.png" style="width:250px;"></p>`,
+     name: "Post_S2",
+
+
+     options: [
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.3.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.3.png" style="width:250px;">',
+
+       
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.2.png" style="width:250px;">'
+     ],
+   },
+   {
+     prompt: `<p>Given what red shirt is doing here, what three actions is blue shirt most likely to do?</p>
+     <p><i>(Select <b>3</b>)</i></p>
+     <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S3.png" style="width:250px;"></p>`,
+     name: "Post_S3",
+
+
+     options: [
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.3.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.3.png" style="width:250px;">',
+
+       
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.2.png" style="width:250px;">'
+     ],
+   },
+   {
+     prompt: `<p>Given what red shirt is doing here, what three actions is blue shirt most likely to do?</p>
+     <p><i>(Select <b>3</b>)</i></p>
+     <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/S4.png" style="width:250px;"></p>`,
+     name: "Post_S4",
+
+
+     options: [
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.3.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O2.3.png" style="width:250px;">',
+
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O3.1.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O4.2.png" style="width:250px;">',
+       '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/O1.2.png" style="width:250px;">'
+     ]
+   }
+  ];
+// Post survey trials constructed from questions
+ var post_survey_social_trials = post_survey_social.map((q, i) => ({
+   type: jsPsychSurveyMultiSelect,
+   preamble: "<p>Think back on everything you've done in the experiment and answer the following questions.</p>",
+   questions: [ q ],
+   data: { question_index: i+1 },
+   on_finish: function(data){
+     // parse responses and write selected options into top-level field (question name)
+     let resp = data.responses;
+     if (typeof resp === 'string'){
+       try { resp = JSON.parse(resp); } catch(e){ resp = {}; }
+     }
+     // resp will have shape { question_name: [ 'option1', 'option2', ... ] }
+     const val = resp && resp[q.name] ? resp[q.name] : null;
+     data[q.name] = val;
+   }
+ }));
+
+
+// Nonsocial post survey questions defined
+var post_survey_nonsocial = [
+    {
+      prompt: `<p>Given the pattern on the card presented here, which three weather outcomes are most likely to happen?</p>
+      <p><i>(Select <b>3</b>)</i></p>
+      <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C1.png" style="width:250px;"></p>`,
+      name: "Post_C1",
+
+      options: [
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.1.png" style="width:250px;">',
+        
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.2.png" style="width:250px;">',
+
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.1.png" style="width:250px;">',
+        
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.3.png" style="width:250px;">'
+      ],
+    },
+    {
+      prompt: `<p>Given the pattern on the card presented here, which three weather outcomes are most likely to happen?</p>
+      <p><i>(Select b>3</b>)</i></p>
+      <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C2.png" style="width:250px;"></p>`,
+      name: "Post_C2",
+
+      options: [
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.1.png" style="width:250px;">',
+  
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.2.png" style="width:250px;">',
+
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.1.png" style="width:250px;">',
+        
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.3.png" style="width:250px;">'
+      ],
+    },
+    {
+      prompt: `<p>Given the pattern on the card presented here, which three weather outcomes are most likely to happen?</p>
+      <p><i>(Select b>3</b>)</i></p>
+      <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C3.png" style="width:250px;"></p>`,
+      name: "Post_C3",
+
+      options: [
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.1.png" style="width:250px;">',
+  
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.2.png" style="width:250px;">',
+
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.1.png" style="width:250px;">',
+        
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.3.png" style="width:250px;">'
+      ],
+    },
+    {
+      prompt: `<p>Given the pattern on the card presented here, which three weather outcomes are most likely to happen?</p>
+      <p><i>(Select b>3</b>)</i></p>
+      <p><img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/C4.png" style="width:250px;"></p>`,
+      name: "Post_C4",
+
+      options: [
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.1.png" style="width:250px;">',
+  
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.2.png" style="width:250px;">',
+
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.1.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO1.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.1.png" style="width:250px;">',
+        
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO2.2.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO4.3.png" style="width:250px;">',
+        '<img src="https://raw.githubusercontent.com/WilderHartwell/SocialNonsocialImplicitLearning/main/stim/nO3.3.png" style="width:250px;">'
+      ],
+    },
+  ];
+  // Post survey trials constructed from questions
+  var post_survey_nonsocial_trials = post_survey_nonsocial.map((q, i) => ({
+    type: jsPsychSurveyMultiSelect,
+    preamble: "<p>Think back on everything you've done in the experiment and answer the following questions.</p>",
+    questions: [ q ],
+    data: { question_index: i+1 },
+    on_finish: function(data){
+      // parse responses and write selected options into top-level field (question name)
+      let resp = data.responses;
+      if (typeof resp === 'string'){
+        try { resp = JSON.parse(resp); } catch(e){ resp = {}; }
+      }
+      // resp will have shape { question_name: [ 'option1', 'option2', ... ] }
+      const val = resp && resp[q.name] ? resp[q.name] : null;
+      data[q.name] = val;
+    }
+  }));
+  // Decide random order for post-surveys and push accordingly
+  const postSocialFirst = Math.random() < 0.5;
+  // record order choice in data
+  jsPsych.data.addProperties({ postSocialFirst });
+  if (postSocialFirst) {
+    timeline.push(...post_survey_social_trials);
+    timeline.push(...post_survey_nonsocial_trials);
+  } else {
+    timeline.push(...post_survey_nonsocial_trials);
+    timeline.push(...post_survey_social_trials);
+  }
+
+// DataPipe save data trial
+const save_data = {
+  type: jsPsychPipe,
+  action: "save",
+  experiment_id: "VdvHog1EyUDN",
+  filename: `${participantID}.csv`,
+  data_string: ()=>jsPsych.data.get().csv()
+};
+timeline.push(save_data);
+
+// Thank you end screen
+var end_screen ={
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `<p><h2>Thank you for participating in this study!</h2></p>
+             <p>Your SONA credit will be rewarded automatically.</p>
+             <p>Press any key to end the experiment.</p>`,
+  };
+timeline.push(end_screen);
+/* -------------------------------
+   10. Run experiment
+--------------------------------*/
+jsPsych.run(timeline);
+</script>
+</body>
+</html>
