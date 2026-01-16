@@ -1,0 +1,1097 @@
+---
+title: "Adult Social Implicit Learning - Processing Script"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Install and Load Packages**
+```{r install/loading packages}
+library(tidyverse)
+library(ggplot2) 
+library(ggthemes) 
+library(effectsize)
+library(knitr)
+library(kableExtra)
+library(purrr)
+library(tidyr)
+library(ggpubr)
+library(DescTools)
+library(lme4)
+library(dplyr)
+library(stringr)
+library(jsonlite)
+library(readr)
+library(lme4) 
+library(lmerTest)
+#install.packages("psych")
+library(psych)
+```
+
+**Import Dataset**
+``` {r import dataset}
+SNILraw <- read.csv(file = "/Users/wilderhartwell/Documents/SNIL/SocialNonsocialImplicitLearning/data/SNILquestionsData.csv", header = FALSE) #import CSV without headers
+```
+
+**Set Up Dataset**
+```{r set up dataset}
+
+# transpose data frame
+SNIL <- as.data.frame(t(SNILraw))
+
+# rename columns
+colnames(SNIL) <- as.character(unlist(SNIL[1, ]))  # make first row the column names
+SNIL <- SNIL[-1, ] # delete first row because its now the column names
+
+
+# make tibble
+SNIL <- tibble(SNIL)
+```
+
+**Parse JSONs**
+```{r parse JSONs}
+
+## PARSE JSONs ##
+
+# ------ PARSE DEMOGRAPHICS ------
+SNIL <- SNIL |>
+  mutate(
+    demo_parsed = map(demo, jsonlite::fromJSON))|>
+  unnest_wider(demo_parsed)
+# ------ PARSE SRS ------
+SNIL <- SNIL |>
+  mutate(
+    SRS1_parsed = map(Q1, jsonlite::fromJSON))|>
+  unnest_wider(SRS1_parsed) |>
+  mutate(
+    SRS2_parsed = map(Q2, jsonlite::fromJSON))|>
+  unnest_wider(SRS2_parsed)|>
+    mutate(
+    SRS3_parsed = map(Q3, jsonlite::fromJSON))|>
+  unnest_wider(SRS3_parsed)|>
+  mutate(
+    SRS4_parsed = map(Q4, jsonlite::fromJSON))|>
+  unnest_wider(SRS4_parsed) |>
+  mutate(
+    SRS5_parsed = map(Q5, jsonlite::fromJSON))|>
+  unnest_wider(SRS5_parsed) |>
+  mutate(
+    SRS6_parsed = map(Q6, jsonlite::fromJSON))|>
+  unnest_wider(SRS6_parsed) |>
+  mutate(
+    SRS7_parsed = map(Q7, jsonlite::fromJSON))|>
+  unnest_wider(SRS7_parsed) |>
+  mutate(
+    SRS8_parsed = map(Q8, jsonlite::fromJSON))|>
+  unnest_wider(SRS8_parsed) |>
+  mutate(
+    SRS9_parsed = map(Q9, jsonlite::fromJSON))|>
+  unnest_wider(SRS9_parsed) |>
+  mutate(
+    SRS10_parsed = map(Q10, jsonlite::fromJSON))|>
+  unnest_wider(SRS10_parsed) |>
+  mutate(
+    SRS11_parsed = map(Q11, jsonlite::fromJSON))|>
+  unnest_wider(SRS11_parsed) |>
+  mutate(
+    SRS12_parsed = map(Q12, jsonlite::fromJSON))|>
+  unnest_wider(SRS12_parsed) |>
+  mutate(
+    SRS13_parsed = map(Q13, jsonlite::fromJSON))|>
+  unnest_wider(SRS13_parsed) |>
+  mutate(
+    SRS14_parsed = map(Q14, jsonlite::fromJSON))|>
+  unnest_wider(SRS14_parsed) |>
+  mutate(
+    SRS15_parsed = map(Q15, jsonlite::fromJSON))|>
+  unnest_wider(SRS15_parsed) |>
+  mutate(
+    SRS16_parsed = map(Q16, jsonlite::fromJSON))|>
+  unnest_wider(SRS16_parsed)
+
+
+# ------ PARSE SOCIAL POST-TEST ------
+SNIL <- SNIL %>%
+  mutate(
+    # Parse JSON → extract the vector of 3 image tags
+    PostS1_parsed = map(PostS1, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostS1_parsed, 1),
+    raw_2 = map_chr(PostS1_parsed, 2),
+    raw_3 = map_chr(PostS1_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_S1_1 = str_extract(raw_1, "O[0-9]+\\.[0-9]+"),
+    Post_S1_2 = str_extract(raw_2, "O[0-9]+\\.[0-9]+"),
+    Post_S1_3 = str_extract(raw_3, "O[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostS1_parsed, -raw_1, -raw_2, -raw_3) |>
+   mutate(
+    # Parse JSON → extract the vector of 3 image tags
+    PostS2_parsed = map(PostS2, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostS2_parsed, 1),
+    raw_2 = map_chr(PostS2_parsed, 2),
+    raw_3 = map_chr(PostS2_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_S2_1 = str_extract(raw_1, "O[0-9]+\\.[0-9]+"),
+    Post_S2_2 = str_extract(raw_2, "O[0-9]+\\.[0-9]+"),
+    Post_S2_3 = str_extract(raw_3, "O[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostS2_parsed, -raw_1, -raw_2, -raw_3) |>
+   mutate(
+ # Parse JSON → extract the vector of 3 image tags
+    PostS3_parsed = map(PostS3, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostS3_parsed, 1),
+    raw_2 = map_chr(PostS3_parsed, 2),
+    raw_3 = map_chr(PostS3_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_S3_1 = str_extract(raw_1, "O[0-9]+\\.[0-9]+"),
+    Post_S3_2 = str_extract(raw_2, "O[0-9]+\\.[0-9]+"),
+    Post_S3_3 = str_extract(raw_3, "O[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostS3_parsed, -raw_1, -raw_2, -raw_3) |>
+   mutate(
+   # Parse JSON → extract the vector of 3 image tags
+    PostS4_parsed = map(PostS4, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostS4_parsed, 1),
+    raw_2 = map_chr(PostS4_parsed, 2),
+    raw_3 = map_chr(PostS4_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_S4_1 = str_extract(raw_1, "O[0-9]+\\.[0-9]+"),
+    Post_S4_2 = str_extract(raw_2, "O[0-9]+\\.[0-9]+"),
+    Post_S4_3 = str_extract(raw_3, "O[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostS4_parsed, -raw_1, -raw_2, -raw_3)
+  
+
+# ------- PARSE NONSOCIAL POST-TEST -------
+
+
+SNIL <- SNIL %>%
+  mutate(
+    # Parse JSON → extract the vector of 3 image tags
+    PostC1_parsed = map(PostC1, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostC1_parsed, 1),
+    raw_2 = map_chr(PostC1_parsed, 2),
+    raw_3 = map_chr(PostC1_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_C1_1 = str_extract(raw_1, "nO[0-9]+\\.[0-9]+"),
+    Post_C1_2 = str_extract(raw_2, "nO[0-9]+\\.[0-9]+"),
+    Post_C1_3 = str_extract(raw_3, "nO[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostC1_parsed, -raw_1, -raw_2, -raw_3) |>
+   mutate(
+    # Parse JSON → extract the vector of 3 image tags
+    PostC2_parsed = map(PostC2, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostC2_parsed, 1),
+    raw_2 = map_chr(PostC2_parsed, 2),
+    raw_3 = map_chr(PostC2_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_C2_1 = str_extract(raw_1, "nO[0-9]+\\.[0-9]+"),
+    Post_C2_2 = str_extract(raw_2, "nO[0-9]+\\.[0-9]+"),
+    Post_C2_3 = str_extract(raw_3, "nO[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostC2_parsed, -raw_1, -raw_2, -raw_3) |>
+   mutate(
+ # Parse JSON → extract the vector of 3 image tags
+    PostC3_parsed = map(PostC3, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostC3_parsed, 1),
+    raw_2 = map_chr(PostC3_parsed, 2),
+    raw_3 = map_chr(PostC3_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_C3_1 = str_extract(raw_1, "nO[0-9]+\\.[0-9]+"),
+    Post_C3_2 = str_extract(raw_2, "nO[0-9]+\\.[0-9]+"),
+    Post_C3_3 = str_extract(raw_3, "nO[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostC3_parsed, -raw_1, -raw_2, -raw_3) |>
+   mutate(
+   # Parse JSON → extract the vector of 3 image tags
+    PostC4_parsed = map(PostC4, ~ fromJSON(.x)[[1]]),
+
+    # Pull the raw HTML strings
+    raw_1 = map_chr(PostC4_parsed, 1),
+    raw_2 = map_chr(PostC4_parsed, 2),
+    raw_3 = map_chr(PostC4_parsed, 3),
+
+    # Extract filenames inside the URL
+    Post_C4_1 = str_extract(raw_1, "nO[0-9]+\\.[0-9]+"),
+    Post_C4_2 = str_extract(raw_2, "nO[0-9]+\\.[0-9]+"),
+    Post_C4_3 = str_extract(raw_3, "nO[0-9]+\\.[0-9]+")
+  ) %>%
+  select(-PostC4_parsed, -raw_1, -raw_2, -raw_3)
+
+# delete original unparsed columns
+SNIL <- subset(SNIL, select = -c(Q1:Q16, demo))
+```
+
+
+**Calculate Scores/Convert Strings**
+```{r calculate scores/convert strings}
+# convert demographics into numbers and add variable to tibble
+SNIL <- SNIL |>
+  mutate(AgeNum = case_when(
+    age %in% c("18-24") ~ 1,
+    age %in% c("25-34") ~ 2,
+    age %in% c("35-44") ~ 3,
+    age %in% c("45-54") ~ 4,
+    age %in% c("55-64") ~ 5,
+    age %in% c("65+") ~ 6,
+    age %in% c("Prefer not to say") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+mutate(GenderNum = case_when(
+    gender %in% c("Man") ~ 1,
+    gender %in% c("Woman") ~ 2,
+    gender %in% c("Non-binary/other") ~ 3,
+    gender %in% c("Prefer not to say") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(RaceNum = case_when(
+    race %in% c("White") ~ 1,
+    race %in% c("Black or African American") ~ 2,
+    race %in% c("Asian") ~ 3,
+    race %in% c("Hispanic or Latino") ~ 4,
+    race %in% c("Native American or Alaska Native") ~ 5,
+    race %in% c("Native Hawaiian or Other Pacific Islander") ~ 6,
+    race %in% c("Mixed Race") ~ 7,
+    race %in% c("Other") ~ 8,
+    race %in% c("Prefer not to say") ~ 0,
+    TRUE ~ NA_real_
+  ) )
+# convert SRS into numbers and add variable to tibble
+SNIL <- SNIL |>
+  mutate(SRS1Num = case_when(
+    SRS1 %in% c("Not True") ~ 1,
+    SRS1 %in% c("Sometimes True") ~ 2,
+    SRS1 %in% c("Often True") ~ 3,
+    SRS1 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS2Num = case_when(
+    SRS2 %in% c("Not True") ~ 4,
+    SRS2 %in% c("Sometimes True") ~ 3,
+    SRS2 %in% c("Often True") ~ 2,
+    SRS2 %in% c("Almost Always True") ~ 1,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS3Num = case_when(
+    SRS3 %in% c("Not True") ~ 1,
+    SRS3 %in% c("Sometimes True") ~ 2,
+    SRS3 %in% c("Often True") ~ 3,
+    SRS3 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS4Num = case_when(
+    SRS4 %in% c("Not True") ~ 1,
+    SRS4 %in% c("Sometimes True") ~ 2,
+    SRS4 %in% c("Often True") ~ 3,
+    SRS4 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS5Num = case_when(
+    SRS5 %in% c("Not True") ~ 1,
+    SRS5 %in% c("Sometimes True") ~ 2,
+    SRS5 %in% c("Often True") ~ 3,
+    SRS5 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS6Num = case_when(
+    SRS6 %in% c("Not True") ~ 1,
+    SRS6 %in% c("Sometimes True") ~ 2,
+    SRS6 %in% c("Often True") ~ 3,
+    SRS6 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS7Num = case_when(
+    SRS7 %in% c("Not True") ~ 4,
+    SRS7 %in% c("Sometimes True") ~ 3,
+    SRS7 %in% c("Often True") ~ 2,
+    SRS7 %in% c("Almost Always True") ~ 1,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS8Num = case_when(
+    SRS8 %in% c("Not True") ~ 1,
+    SRS8 %in% c("Sometimes True") ~ 2,
+    SRS8 %in% c("Often True") ~ 3,
+    SRS8 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS9Num = case_when(
+    SRS9 %in% c("Not True") ~ 1,
+    SRS9 %in% c("Sometimes True") ~ 2,
+    SRS9 %in% c("Often True") ~ 3,
+    SRS9 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS10Num = case_when(
+    SRS10 %in% c("Not True") ~ 1,
+    SRS10 %in% c("Sometimes True") ~ 2,
+    SRS10 %in% c("Often True") ~ 3,
+    SRS10 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS11Num = case_when(
+    SRS11 %in% c("Not True") ~ 1,
+    SRS11 %in% c("Sometimes True") ~ 2,
+    SRS11 %in% c("Often True") ~ 3,
+    SRS11 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS12Num = case_when(
+    SRS12 %in% c("Not True") ~ 1,
+    SRS12 %in% c("Sometimes True") ~ 2,
+    SRS12 %in% c("Often True") ~ 3,
+    SRS12 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS13Num = case_when(
+    SRS13 %in% c("Not True") ~ 4,
+    SRS13 %in% c("Sometimes True") ~ 3,
+    SRS13 %in% c("Often True") ~ 2,
+    SRS13 %in% c("Almost Always True") ~ 1,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS14Num = case_when(
+    SRS14 %in% c("Not True") ~ 1,
+    SRS14 %in% c("Sometimes True") ~ 2,
+    SRS14 %in% c("Often True") ~ 3,
+    SRS14 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS15Num = case_when(
+    SRS15 %in% c("Not True") ~ 1,
+    SRS15 %in% c("Sometimes True") ~ 2,
+    SRS15 %in% c("Often True") ~ 3,
+    SRS15 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(SRS16Num = case_when(
+    SRS16 %in% c("Not True") ~ 1,
+    SRS16 %in% c("Sometimes True") ~ 2,
+    SRS16 %in% c("Often True") ~ 3,
+    SRS16 %in% c("Almost Always True") ~ 4,
+    TRUE ~ NA_real_
+  ) )
+# score SRS
+SRSscore <- rowSums(SNIL[, c("SRS1Num", "SRS2Num", "SRS3Num", "SRS4Num", "SRS5Num", "SRS6Num", "SRS7Num", "SRS8Num", "SRS9Num", "SRS10Num", "SRS11Num", "SRS12Num", "SRS13Num", "SRS14Num", "SRS15Num", "SRS16Num")]) # score SRS
+as.data.frame(SRSscore)
+  SNIL <- bind_cols(SNIL, SRSscore) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(SRSscore = `...73`)
+
+ 
+# convert C post-test to numbers
+SNIL <- SNIL |>
+  mutate(Post_C1Score_1 = case_when(
+    Post_C1_1 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C1_1 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C1Score_2 = case_when(
+    Post_C1_2 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C1_2 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C1Score_3 = case_when(
+    Post_C1_3 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C1_3 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C2Score_1 = case_when(
+    Post_C2_1 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C2_1 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C2Score_2 = case_when(
+    Post_C2_2 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C2_2 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C2Score_3 = case_when(
+    Post_C2_3 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C2_3 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+    mutate(Post_C3Score_1 = case_when(
+    Post_C3_1 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C3_1 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C3Score_2 = case_when(
+    Post_C3_2 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C3_2 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C3Score_3 = case_when(
+    Post_C3_3 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C3_3 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+    mutate(Post_C4Score_1 = case_when(
+    Post_C4_1 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C4_1 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C4Score_2 = case_when(
+    Post_C4_2 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C4_2 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_C4Score_3 = case_when(
+    Post_C4_3 %in% c("nO1.1", "nO1.2", "nO1.3") ~ 1,
+    Post_C4_3 %in% c("nO2.1", "nO2.2", "nO2.3", "nO3.1", "nO3.2", "nO3.3", "nO4.1", "nO4.2", "nO4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) )
+
+# convert S post-test to numbers
+SNIL <- SNIL |>
+  mutate(Post_S1Score_1 = case_when(
+    Post_S1_1 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S1_1 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S1Score_2 = case_when(
+    Post_S1_2 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S1_2 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S1Score_3 = case_when(
+    Post_S1_3 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S1_3 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S2Score_1 = case_when(
+    Post_S2_1 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S2_1 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S2Score_2 = case_when(
+    Post_S2_2 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S2_2 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S2Score_3 = case_when(
+    Post_S2_3 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S2_3 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+    mutate(Post_S3Score_1 = case_when(
+    Post_S3_1 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S3_1 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S3Score_2 = case_when(
+    Post_S3_2 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S3_2 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S3Score_3 = case_when(
+    Post_S3_3 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S3_3 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+    mutate(Post_S4Score_1 = case_when(
+    Post_S4_1 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S4_1 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S4Score_2 = case_when(
+    Post_S4_2 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S4_2 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(Post_S4Score_3 = case_when(
+    Post_S4_3 %in% c("O1.1", "O1.2", "O1.3") ~ 1,
+    Post_S4_3 %in% c("O2.1", "O2.2", "O2.3", "O3.1", "O3.2", "O3.3", "O4.1", "O4.2", "O4.3") ~ 0,
+    TRUE ~ NA_real_
+  ) )
+
+# ------ score C post-test ------ 
+
+# Calculate post-test C1 total
+PostC1total <- rowSums(SNIL[, c("Post_C1Score_1", "Post_C1Score_2", "Post_C1Score_3")]) # score C1 post-test
+as.data.frame(PostC1total)
+  SNIL <- bind_cols(SNIL, PostC1total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostC1total = `...98`)
+
+# Calculate post-test C2 total
+PostC2total <- rowSums(SNIL[, c("Post_C2Score_1", "Post_C2Score_2", "Post_C2Score_3")]) # score C2 post-test
+as.data.frame(PostC2total)
+  SNIL <- bind_cols(SNIL, PostC2total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostC2total = `...99`)
+
+# Calculate post-test C3 total
+PostC3total <- rowSums(SNIL[, c("Post_C3Score_1", "Post_C3Score_2", "Post_C3Score_3")]) # score C3 post-test
+as.data.frame(PostC3total)
+  SNIL <- bind_cols(SNIL, PostC3total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostC3total = `...100`)
+
+# Calculate post-test C4 total
+PostC4total <- rowSums(SNIL[, c("Post_C4Score_1", "Post_C4Score_2", "Post_C4Score_3")]) # score C4 post-test
+as.data.frame(PostC4total)
+  SNIL <- bind_cols(SNIL, PostC4total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostC4total = `...101`)
+
+# Calculate total C post-test score
+PostCtotal <- rowSums(SNIL[, c("PostC1total", "PostC2total", "PostC3total", "PostC4total")])
+as.data.frame(PostCtotal)
+  SNIL <- bind_cols(SNIL, PostCtotal) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostCtotal = `...102`)
+
+# ------ score S post-test ------ 
+
+# Calculate post-test S1 total
+PostS1total <- rowSums(SNIL[, c("Post_S1Score_1", "Post_S1Score_2", "Post_S1Score_3")]) # score S1 post-test
+as.data.frame(PostS1total)
+  SNIL <- bind_cols(SNIL, PostS1total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostS1total = `...103`)
+
+# Calculate post-test S2 total
+PostS2total <- rowSums(SNIL[, c("Post_S2Score_1", "Post_S2Score_2", "Post_S2Score_3")]) # score S2 post-test
+as.data.frame(PostS2total)
+  SNIL <- bind_cols(SNIL, PostS2total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostS2total = `...104`)
+
+# Calculate post-test C3 total
+PostS3total <- rowSums(SNIL[, c("Post_S3Score_1", "Post_S3Score_2", "Post_S3Score_3")]) # score S3 post-test
+as.data.frame(PostS3total)
+  SNIL <- bind_cols(SNIL, PostS3total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostS3total = `...105`)
+
+# Calculate post-test S4 total
+PostS4total <- rowSums(SNIL[, c("Post_S4Score_1", "Post_S4Score_2", "Post_S4Score_3")]) # score S4 post-test
+as.data.frame(PostS4total)
+  SNIL <- bind_cols(SNIL, PostS4total) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostS4total = `...106`)
+
+# Calculate total S post-test score
+PostStotal <- rowSums(SNIL[, c("PostS1total", "PostS2total", "PostS3total", "PostS4total")])
+as.data.frame(PostStotal)
+  SNIL <- bind_cols(SNIL, PostStotal) # add score column to SNIL tibble
+# title column
+SNIL <- SNIL %>%
+  rename(PostStotal = `...107`)
+
+# REMOVE POST S1:C4
+SNIL <- subset(SNIL, select = -c(PostS1:PostC4))
+
+```
+
+
+**Prepare LME Dataset**
+``` {r import lme dataset}
+#import SNILlme
+SNILlmeRaw <- read.csv(file = "/Users/wilderhartwell/Documents/SNIL/SocialNonsocialImplicitLearning/data/SNILlmeData.csv", header = TRUE) #import CSV with headers
+```
+
+``` {r prepare lme dataset}
+
+SNILlme <- SNILlmeRaw %>%
+  # make factors into characters so string ops are safe
+  mutate(across(where(is.factor), as.character)) %>%
+
+  # For all character columns: turn "null" -> NA, trim whitespace, then "" -> NA
+  mutate(across(
+    where(is.character),
+    ~ {
+      x <- .
+      x <- na_if(x, "null")    # literal "null" -> NA
+      x <- str_trim(x)         # remove leading/trailing whitespace
+      na_if(x, "")             # empty string -> NA
+    }
+  )) %>%
+
+  # Now remove any rows where ALL columns except ID are NA
+  filter(!if_all(-ID, is.na)) %>%
+
+  # Extra safety: make sure AccNonsocial is not NA/empty/whitespace
+  filter(!is.na(AccNonsocial) & str_trim(as.character(AccNonsocial)) != "")
+
+# number trials
+SNILlme <- SNILlme %>%
+  mutate(Trial = rep(1:200, length.out = n()))
+
+# ------- add SRS score to all trials for each participant ------
+
+# 1. Extract one SRS score per participant
+participant_df <- SNIL %>%
+  distinct(ID, SRSscore)
+
+# 2. Expand participants to 12 rows each
+participant_df_12 <- participant_df %>%
+  slice(rep(row_number(), each = 200))
+
+# 3. Sort both datasets to guarantee alignment
+SNILlme <- SNILlme %>% arrange(ID)
+participant_df_12 <- participant_df_12 %>% arrange(ID)
+
+# 4. Attach SRS scores
+SNILlme$SRSscore <- participant_df_12$SRSscore
+
+# Make Acc numeric
+SNILlme <- SNILlme |>
+  mutate(AccNonsocialNum = case_when(
+    AccNonsocial %in% c("TRUE") ~ 1,
+    AccNonsocial %in% c("FALSE") ~ 0,
+    TRUE ~ NA_real_
+  ) ) |>
+  mutate(AccSocialNum = case_when(
+    AccSocial %in% c("TRUE") ~ 1,
+    AccSocial %in% c("FALSE") ~ 0,
+    TRUE ~ NA_real_
+  ) )
+
+```
+
+**Exclude Participants from LME Dataset**
+```{r exclude participants from lme dataset}
+
+# Make sure data is sorted by ID so grouping works correctly
+SNILlme <- SNILlme %>% arrange(ID)
+
+
+# ------ Count missing responses ------
+
+missing_summary <- SNILlme %>%
+  group_by(ID) %>%
+  summarize(
+    missing_nonsocial = sum(is.na(RespNonsocial)),
+    missing_social    = sum(is.na(RespSocial)),
+    missing_flag = (missing_nonsocial > 40 | missing_social > 40)
+  )
+
+# ------ Check uniform responses (all a or all l) ------
+
+uniform_summary <- SNILlme %>%
+  group_by(ID) %>%
+  summarize(
+    # Gather all responses for this participant into a vector (list-col)
+    responses = list(
+      c(RespNonsocial, RespSocial) %>%         # concat both columns' values for the ID
+      as.character() %>%                      # ensure character
+      str_trim() %>%                          # remove leading/trailing spaces
+      tolower() %>%                           # normalize to lowercase
+      na_if("") %>%                           # convert empty strings to NA
+      na.omit()                               # drop NA
+    ),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    # responses is a list-column; use map_lgl to test each element
+    all_a = map_lgl(responses, ~ length(.x) > 50 && all(.x == "a")),
+    all_l = map_lgl(responses, ~ length(.x) > 50 && all(.x == "l")),
+    uniform_flag = all_a | all_l
+  ) %>%
+  select(ID, all_a, all_l, uniform_flag)
+
+# ------ Check too-fast RTs (< 400 ms) ------
+
+rt_summary <- SNILlme %>%
+  group_by(ID) %>%
+  summarize(
+    fast_nonsocial = sum(rtNonsocial < 400, na.rm = TRUE),
+    fast_social    = sum(rtSocial < 400, na.rm = TRUE),
+    fast_flag = (fast_nonsocial > 30 | fast_social > 30)
+  )
+
+
+# ==========================================================
+# 4. Combine all exclusion criteria into one master table
+# ==========================================================
+
+exclusion_table <- missing_summary %>%
+  left_join(uniform_summary, by = "ID") %>%
+  left_join(rt_summary, by = "ID") %>%
+  mutate(
+    reason = case_when(
+      missing_flag & uniform_flag & fast_flag ~
+        "Too many missing trials, uniform responses, and too many fast RTs",
+      
+      missing_flag & uniform_flag ~
+        "Too many missing trials and uniform responses",
+
+      missing_flag & fast_flag ~
+        "Too many missing trials and too many fast RTs",
+
+      uniform_flag & fast_flag ~
+        "Uniform responses and too many fast RTs",
+
+      missing_flag ~ "Too many missing trials (>40)",
+      uniform_flag ~ "All responses were 'a' or all were 'l'",
+      fast_flag ~ "More than 30 trials < 400ms",
+      TRUE ~ NA_character_
+    )
+  )
+
+# ------ Extract exclusion list + Filter dataset ------
+
+# Participants to exclude
+excluded <- exclusion_table %>% filter(!is.na(reason))
+
+# Participants to KEEP
+included_ids <- exclusion_table %>% filter(is.na(reason)) %>% pull(ID)
+
+# Filter dataset
+SNILlme_filtered <- SNILlme %>% filter(ID %in% included_ids)
+
+# Saving merging changes until the end 
+SNILlme <- SNILlme_filtered
+
+
+# ------ Write outputs ------
+
+write_csv(excluded, "SNILlme_exclusions.csv")
+
+# Also show exclusion table in console
+excluded
+
+```
+
+**Exclude Participants from Questionnaire Dataset**
+``` {r exclude participants from questionnaire dataset}
+# Pull IDs from exclusion table and then remove those IDs from the questionnaire dataset
+SNIL <- SNIL %>%
+  filter(!ID %in% excluded$ID)
+
+```
+
+**Prepare Data for Questionnaire Analysis**
+```{r preparing data for questionnaire analysis}
+#Calculate an accuracy score in the test phase for each participant using SNILlme, then append to SNIL
+
+# --------- 1. Compute accuracy for last 50 trials (test block) ---------
+
+# Nonsocial accuracy
+TestAccNonsocial <- SNILlme %>%
+  group_by(ID) %>%
+  # keep only the last 50 of the 200 trials
+  slice_tail(n = 50) %>% 
+  summarise(
+    TestAccNonsocial = mean(AccNonsocialNum, na.rm = TRUE)
+  )
+
+# Social accuracy
+TestAccSocial <- SNILlme %>%
+  group_by(ID) %>%
+  # keep only the last 50 of the 200 trials
+  slice_tail(n = 50) %>% 
+  summarise(
+    TestAccSocial = mean(AccSocialNum, na.rm = TRUE)
+  )
+
+# --------- 2. Append this score to the 1-row-per-participant dataset ---------
+
+SNIL <- SNIL %>%
+  left_join(TestAccNonsocial, by = "ID") |>
+  left_join(TestAccSocial, by = "ID")
+
+```
+
+**Subset Dataset**
+```{r subset dataset}
+
+SNILnum <- subset(SNIL, select = -c(postSocialFirst:Post_C4_3))
+
+```
+
+**Summary Statistics and Plots**
+```{r summary statistics and plots}
+
+# ------ Define function to handle demographic variables ------
+summarize_demo <- function(data, var) {
+  # Convert tidy-eval input to a usable column
+  var <- rlang::ensym(var)
+
+  # Clean data: remove NA and “Prefer not to say”
+  cleaned <- data %>%
+    filter(!is.na(!!var),
+           !!var != "Prefer not to say")
+
+  # Percentages
+  percent_table <- cleaned %>%
+    count(!!var) %>%
+    mutate(percent = 100 * n / sum(n))
+
+  # Mode (most frequent value)
+  mode_value <- percent_table %>%
+    slice_max(n, n = 1) %>%
+    pull(!!var)
+
+  # Median (numeric only)
+  numeric_var <- cleaned[[rlang::as_string(var)]]
+  median_value <- if (is.numeric(numeric_var)) {
+    median(numeric_var, na.rm = TRUE)
+  } else {
+    NA
+  }
+
+  # Histogram (numeric only)
+  plot <- NULL
+  if (is.numeric(numeric_var)) {
+    plot <- ggplot(cleaned, aes(x = {{var}})) +
+      geom_histogram(fill = "steelblue", color = "black") +
+      geom_vline(xintercept = median_value, color = "red", linetype = "dashed", linewidth = 1) +
+      theme_classic() +
+      labs(
+        title = paste("Histogram of", rlang::as_string(var)),
+        subtitle = paste("Median =", median_value),
+        y = "Count"
+      )
+  }
+
+  list(
+    cleaned_data = cleaned,
+    percentages = percent_table,
+    mode = mode_value,
+    median = median_value,
+    plot = plot
+  )
+}
+
+# AGE
+age_results <- summarize_demo(SNILnum, AgeNum)
+age_results$percentages
+age_results$mode
+age_results$median
+age_results$plot
+
+# GENDER
+gender_results <- summarize_demo(SNILnum, GenderNum)
+gender_results$percentages
+gender_results$mode
+age_results$median
+gender_results$plot
+
+# RACE
+race_results <- summarize_demo(SNILnum, RaceNum)
+race_results$percentages
+race_results$mode
+age_results$median
+race_results$plot 
+
+# ------ Scores on SRS ------
+summary(SRSscore)  # show summary statistics
+SRShistogram <- ggplot(SNILnum, aes(x = SRSscore)) +
+  geom_histogram(
+    binwidth = 1,        # adjust as needed
+    fill = "#d96627",
+    color = "black",
+    alpha = 0.7
+  ) +
+  #scale_y_continuous(breaks = c(0, 2, 4, 6, 8, 10)) +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+    
+    # Axis line color
+    axis.line = element_line(color = "darkgray"),
+    
+    # Tick mark color
+    axis.ticks = element_line(color = "darkgray"),
+    
+    # Axis text color
+    axis.text = element_text(color = "black"),
+    
+    # Title color
+    plot.title = element_text(color = "black", size = 14, face = "bold"),
+    
+    # Axis label color
+    axis.title = element_text(color = "black", size = 12)
+  ) +
+  labs(
+    title = "Distribution of SRS Scores",
+    x = "SRS Score",
+    y = "Count"
+  )
+SRShistogram # show histogram
+
+
+# ------ Scores on the social post-test -------
+summary(PostStotal)  # show summary statistics
+PostSocialHistogram <- ggplot(SNILnum, aes(x = PostStotal)) +
+  geom_histogram(
+    binwidth = 1,        # adjust as needed
+    fill = "#d96627",
+    color = "black",
+    alpha = 0.7
+  ) +
+  #scale_y_continuous(breaks = c(0, 2, 4, 6, 8, 10)) +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+    
+    # Axis line color
+    axis.line = element_line(color = "darkgray"),
+    
+    # Tick mark color
+    axis.ticks = element_line(color = "darkgray"),
+    
+    # Axis text color
+    axis.text = element_text(color = "black"),
+    
+    # Title color
+    plot.title = element_text(color = "black", size = 14, face = "bold"),
+    
+    # Axis label color
+    axis.title = element_text(color = "black", size = 12)
+  ) +
+  labs(
+    title = "Distribution of Social Post-Test Scores",
+    x = "Social Post-test Score",
+    y = "Count"
+  )
+PostSocialHistogram # show histogram
+
+# ------ Scores on the nonsocial post-test ------
+summary(PostCtotal)  # show summary statistics
+PostNonsocialHistogram <- ggplot(SNILnum, aes(x = PostCtotal)) +
+  geom_histogram(
+    binwidth = 1,       
+    fill = "#d96627",
+    color = "black",
+    alpha = 0.7
+  ) +
+  #scale_x_continuous(breaks = c(0, 1, 2, 3, 4)) +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+    
+    # Axis line color
+    axis.line = element_line(color = "darkgray"),
+    
+    # Tick mark color
+    axis.ticks = element_line(color = "darkgray"),
+    
+    # Axis text color
+    axis.text = element_text(color = "black"),
+    
+    # Title color
+    plot.title = element_text(color = "black", size = 14, face = "bold"),
+    
+    # Axis label color
+    axis.title = element_text(color = "black", size = 12)
+  ) +
+  labs(
+    title = "Distribution of Nonocial Post-Test Scores",
+    x = "Nonsocial Post-test Score",
+    y = "Count"
+  )
+PostNonsocialHistogram # show histogram
+
+```
+
+**Linear Mixed Effects Model**
+``` {r linear mixed effects model}
+# linear mixed effects models
+
+# Basic nonsocial lme
+lmeNonsocial <- lmer(AccNonsocialNum ~ Trial + (0 + Trial|ID), REML=F, data=SNILlme)
+summary(lmeNonsocial)
+
+# Basic social lme
+lmeSocial <- lmer(AccSocialNum ~ Trial + (0 + Trial|ID), REML=F, data=SNILlme)
+summary(lmeSocial)
+
+# Complex nonsocial lme
+lmeNonsocial <- lmer(AccNonsocialNum ~ Trial*SRSscore + (0 + Trial|ID), REML=F, data=SNILlme) # This is most likely too complex of a model, but it is included as something to try
+summary(lmeNonsocial)
+
+# Complex social lme
+lmeSocial <- lmer(AccSocialNum ~ Trial*SRSscore + (0 + Trial|ID), REML=F, data=SNILlme) # This is most likely too complex of a model, but it is included as something to try
+summary(lmeSocial)
+
+```
+
+```{r accuracy descriptives}
+
+# ------- Accuracy Summary ------
+print("Accuracy on Nonsocial Test Block")
+summary(TestAccNonsocial) # Nonsocial
+
+print("Accuracy on Social Test Block")
+summary(TestAccSocial) # Social
+
+```
+
+```{r post-test descriptives}
+
+# ------ Accuracy on Nonsocial Post-test ------
+print("Accuracy on Nonsocial Post-test")
+summary(PostCtotal) # Overall C score
+summary(PostC1total) # C1 score
+summary(PostC2total) # C2 score
+summary(PostC3total) # C3 score
+summary(PostC4total) # C4 score
+
+print("Accuracy on Social Post-test")
+summary(PostStotal) # Overall S score
+summary(PostS1total) # S1 score
+summary(PostS2total) # S2 score
+summary(PostS3total) # S3 score
+summary(PostS4total) # S4 score
+
+```
+
+
+**Linear Regression**
+```{r linear regression}
+
+# Linear regression of SRS --> TestAccNonsocial
+RegressSRS_TestAccNonsocial <- setCor(TestAccNonsocial ~ SRSscore, data=SNILnum, std=FALSE, zero=TRUE, alpha=.05)
+RegressSRS_TestAccNonsocial
+
+# Linear regression of SRS --> TestAccSocial
+RegressSRS_TestAccSocial <- setCor(TestAccSocial ~ SRSscore, data=SNILnum, std=FALSE, zero=TRUE, alpha=.05)
+RegressSRS_TestAccSocial
+
+# Linear regression of nonsocial post-test score --> nonsocial accuracy
+RegressPost_TestAccNonocial <- setCor(TestAccNonsocial ~ PostCtotal, data=SNILnum, std=FALSE, zero=TRUE, alpha=.05)
+RegressPost_TestAccNonocial
+
+# Linear regression of social post-test score --> social accuracy
+RegressPost_TestAccSocial <- setCor(TestAccSocial ~ PostStotal, data=SNILnum, std=FALSE, zero=TRUE, alpha=.05)
+RegressPost_TestAccSocial
+
+```
+
