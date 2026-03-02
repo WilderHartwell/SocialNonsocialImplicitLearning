@@ -324,18 +324,18 @@ var social_instructions ={
 //   probe_in_list — boolean, whether probe was in the sequence
 // -------------------------------------------------------
 function generateDigitInfo() {
-  // Build pool of digits 1-9, shuffle, take first 6
+  // Build pool of digits 1-9, shuffle, take first 5
   const pool = [1,2,3,4,5,6,7,8,9];
   shuffle(pool);
-  const digits = pool.slice(0, 6);
+  const digits = pool.slice(0, 5);
 
-  // 50/50: probe is either one of the 6 digits shown, or one of the 3 NOT shown
+  // 50/50: probe is either one of the 5 digits shown, or one of the 3 NOT shown
   const probeInList = Math.random() < 0.5;
   let probe;
   if (probeInList) {
     probe = digits[Math.floor(Math.random() * digits.length)];
   } else {
-    const notShown = pool.slice(6); // remaining 3 digits not in the sequence
+    const notShown = pool.slice(5); // remaining 4 digits not in the sequence
     probe = notShown[Math.floor(Math.random() * notShown.length)];
   }
 
@@ -1113,44 +1113,44 @@ console.log("socialFirst =", socialFirst);
 
 if (socialFirst) {
   timeline.push(social_instructions);
-  timeline.push(...SO_block);
-  timeline.push(break_trial);
-  timeline.push(...SO_block);
-  timeline.push(break_trial);
-  timeline.push(...SO_block);
-  timeline.push(break_trial);
-  timeline.push(test_instructions);
-  timeline.push({timeline: SO_test_block});
+  //timeline.push(...SO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...SO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...SO_block);
+  //timeline.push(break_trial);
+  //timeline.push(test_instructions);
+  //timeline.push({timeline: SO_test_block});
   timeline.push({ type: jsPsychHtmlKeyboardResponse, stimulus:"<p><h3>You're halfway done! Please take as long of a break as you need.</h3></p> <p>When you're ready, press the enter key to continue.</p>",choices:['Enter']});
-  timeline.push(nonsocial_instructions)
-  timeline.push(...CnO_block);
-  timeline.push(break_trial);
-  timeline.push(...CnO_block);
-  timeline.push(break_trial);
-  timeline.push(...CnO_block);
-  timeline.push(break_trial);
-  timeline.push(test_instructions);
-  timeline.push(...CnO_test_block);
+  //timeline.push(nonsocial_instructions)
+  //timeline.push(...CnO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...CnO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...CnO_block);
+  //timeline.push(break_trial);
+  //timeline.push(test_instructions);
+  //timeline.push(...CnO_test_block);
 } else {
-  timeline.push(nonsocial_instructions);
-  timeline.push(...CnO_block);
-  timeline.push(break_trial);
-  timeline.push(...CnO_block);
-  timeline.push(break_trial);
-  timeline.push(...CnO_block);
-  timeline.push(break_trial);
-  timeline.push(test_instructions);
-  timeline.push(...CnO_test_block);
+  //timeline.push(nonsocial_instructions);
+  //timeline.push(...CnO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...CnO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...CnO_block);
+  //timeline.push(break_trial);
+  //timeline.push(test_instructions);
+  //timeline.push(...CnO_test_block);
   timeline.push({ type: jsPsychHtmlKeyboardResponse, stimulus:"<p><h3>You're halfway done! Please take as long of a break as you need.</h3></p> <p>When you're ready, press the enter key to continue.</p>", choices: ['Enter']});
-  timeline.push(social_instructions);
-  timeline.push(...SO_block);
-  timeline.push(break_trial);
-  timeline.push(...SO_block);
-  timeline.push(break_trial);
-  timeline.push(...SO_block);
-  timeline.push(break_trial);
-  timeline.push(test_instructions);
-  timeline.push({timeline: SO_test_block});
+  //timeline.push(social_instructions);
+  //timeline.push(...SO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...SO_block);
+  //timeline.push(break_trial);
+  //timeline.push(...SO_block);
+  //timeline.push(break_trial);
+  //timeline.push(test_instructions);
+  //timeline.push({timeline: SO_test_block});
 }
 
 // POST SURVEY
@@ -1207,16 +1207,18 @@ var post_survey_social_trials = post_survey_social.map((q, i) => ({
   preamble: "<p>Think back on everything you've done in the experiment and answer the following questions.</p>",
   questions: [ q ],
   data: { question_index: i+1 },
-  validation_function: function(response) {
-    const selected = response[q.name];
-    if (!selected || selected.length === 0) {
-      return "Please select an answer.";
-    }
-    if (selected.length > 1) {
-      return "Please select only 1 answer.";
-    }
-    return true;
-  },
+  on_load: function() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked) {
+        checkboxes.forEach(other => {
+          if (other !== this) other.checked = false;
+        });
+      }
+    });
+  });
+},
   on_finish: function(data) {
     let resp = data.responses;
     if (typeof resp === 'string') {
@@ -1277,20 +1279,22 @@ var post_survey_nonsocial = [
   ];
   // Post survey trials constructed from questions
   var post_survey_nonsocial_trials = post_survey_nonsocial.map((q, i) => ({
-    type: jsPsychSurveyMultiSelect,
+  type: jsPsychSurveyMultiSelect,
   preamble: "<p>Think back on everything you've done in the experiment and answer the following questions.</p>",
   questions: [ q ],
   data: { question_index: i+1 },
-  validation_function: function(response) {
-    const selected = response[q.name];
-    if (!selected || selected.length === 0) {
-      return "Please select an answer.";
-    }
-    if (selected.length > 1) {
-      return "Please select only 1 answer.";
-    }
-    return true;
-  },
+  on_load: function() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked) {
+        checkboxes.forEach(other => {
+          if (other !== this) other.checked = false;
+        });
+      }
+    });
+  });
+},
   on_finish: function(data) {
     let resp = data.responses;
     if (typeof resp === 'string') {
@@ -1321,7 +1325,7 @@ const save_data = {
   filename: `${sona_id}.csv`,
   data_string: ()=>jsPsych.data.get().csv()
 };
-//timeline.push(save_data);
+timeline.push(save_data);
 
 // Thank you end screen
 var end_screen ={
