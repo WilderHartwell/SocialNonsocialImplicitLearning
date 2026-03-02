@@ -21,23 +21,15 @@ const sona_id = urlParams.get('sona_id');
 // Initialize jsPsych
 const jsPsych = initJsPsych({
   on_finish: () => {
-    //window.location.assign(
-    //  "https://ucsd.sona-systems.com/webstudy_credit.aspx?" +
-    //  "experiment_id=3034" +
-    //  "&credit_token=01a78e4314674941a686cb385df7a34b" +
-    //  "&survey_code=" + sona_id
-    //);
-    jsPsych.data.get().localSave('csv', 'test_data.csv');
+    window.location.assign(
+      "https://ucsd.sona-systems.com/webstudy_credit.aspx?" +
+      "experiment_id=3034" +
+      "&credit_token=01a78e4314674941a686cb385df7a34b" +
+      "&survey_code=" + sona_id
+    );
+    //jsPsych.data.get().localSave('csv', 'test_data.csv');
   }
 });
-
-// Generate a participant ID
-//const participantID = jsPsych.randomization.randomID(10);
-
-// Add participant ID to EVERY trial's data
-//jsPsych.data.addProperties({
-//  ID: participantID
-//});
 
     // -------------------------------
     // Helpers
@@ -301,7 +293,7 @@ var social_instructions ={
              breaks in between.</p>
              <p>In addition to this task you're going to be shown four random numbers before every trial. Remember them, because after the trial you will be shown another number
              and asked to indicate (A = no, L = yes) whether that number was in the original set of four numbers. Please try your best even though you will <b>not</b> recieve feedback on your performance.</p>
-             <p> Both of these tasks move quickly, so do your best to answer accurately and quickly. </p>
+             <p> While both of these tasks move quickly, prioritize answering accurately. </p>
              <p>Press the enter key to begin.</p>`,
   choices: ['Enter'],
   post_trial_gap: 2000};
@@ -316,7 +308,7 @@ var social_instructions ={
                 have short breaks in between.</p>
                 <p>In addition to this task you're going to be shown four random numbers before every trial. Remember them, because after the trial you will be shown another number
                 and asked to indicate (A = no, L = yes) whether that number was in the original set of four numbers. Please try your best even though you will <b>not</b> recieve feedback on your performance.</p>
-                <p> Both of these tasks move quickly, so do your best to answer accurately and quickly. </p>
+                <p> While both of these tasks move quickly, prioritize answering accurately. </p>
                <p>Press the enter key to begin</p>`,
     post_trial_gap: 2000,
     choices: ['Enter']
@@ -335,7 +327,7 @@ function generateDigitInfo() {
   // Build pool of digits 1-9, shuffle, take first 6
   const pool = [1,2,3,4,5,6,7,8,9];
   shuffle(pool);
-  const digits = pool.slice(0, 6);
+  const digits = pool.slice(0, 5);
 
   // 50/50: probe is either one of the 6 digits shown, or one of the 3 NOT shown
   const probeInList = Math.random() < 0.5;
@@ -343,7 +335,7 @@ function generateDigitInfo() {
   if (probeInList) {
     probe = digits[Math.floor(Math.random() * digits.length)];
   } else {
-    const notShown = pool.slice(6); // remaining 3 digits not in the sequence
+    const notShown = pool.slice(5); // remaining 3 digits not in the sequence
     probe = notShown[Math.floor(Math.random() * notShown.length)];
   }
 
@@ -1083,7 +1075,7 @@ var break_trial = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: `<p>Good job! You can take a short break now.</p>
               <p>We know sometimes it's hard when you're not receiving feedback, 
-              but please try to do your best to respond accurately on both parts of the task.</p> 
+              but please do your best to respond accurately on both parts of the task.</p> 
               <p>Press the enter key when you are ready to continue.</p>`,
     post_trial_gap: 1000,
     choices: ['Enter']
@@ -1215,16 +1207,18 @@ var post_survey_social_trials = post_survey_social.map((q, i) => ({
   preamble: "<p>Think back on everything you've done in the experiment and answer the following questions.</p>",
   questions: [ q ],
   data: { question_index: i+1 },
-  validation_function: function(response) {
-    const selected = response[q.name];
-    if (!selected || selected.length === 0) {
-      return "Please select an answer.";
-    }
-    if (selected.length > 1) {
-      return "Please select only 1 answer.";
-    }
-    return true;
-  },
+  on_load: function() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked) {
+        checkboxes.forEach(other => {
+          if (other !== this) other.checked = false;
+        });
+      }
+    });
+  });
+},
   on_finish: function(data) {
     let resp = data.responses;
     if (typeof resp === 'string') {
@@ -1283,22 +1277,25 @@ var post_survey_nonsocial = [
       required: true
     },
   ];
+  
   // Post survey trials constructed from questions
-  var post_survey_nonsocial_trials = post_survey_nonsocial.map((q, i) => ({
-    type: jsPsychSurveyMultiSelect,
+var post_survey_nonsocial_trials = post_survey_nonsocial.map((q, i) => ({
+  type: jsPsychSurveyMultiSelect,
   preamble: "<p>Think back on everything you've done in the experiment and answer the following questions.</p>",
   questions: [ q ],
   data: { question_index: i+1 },
-  validation_function: function(response) {
-    const selected = response[q.name];
-    if (!selected || selected.length === 0) {
-      return "Please select an answer.";
-    }
-    if (selected.length > 1) {
-      return "Please select only 1 answer.";
-    }
-    return true;
-  },
+  on_load: function() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked) {
+        checkboxes.forEach(other => {
+          if (other !== this) other.checked = false;
+        });
+      }
+    });
+  });
+},
   on_finish: function(data) {
     let resp = data.responses;
     if (typeof resp === 'string') {
@@ -1322,21 +1319,22 @@ var post_survey_nonsocial = [
   }
 
 // DataPipe save data trial
-//const save_data = {
-//  type: jsPsychPipe,
-//  action: "save",
-//  experiment_id: "VdvHog1EyUDN",
-//  filename: `${sona_id}.csv`,
-//  data_string: ()=>jsPsych.data.get().csv()
-//};
-//timeline.push(save_data);
+const save_data = {
+  type: jsPsychPipe,
+  action: "save",
+  experiment_id: "gGp9psX3Ruzy",
+  filename: `${sona_id}.csv`,
+  data_string: ()=>jsPsych.data.get().csv()
+};
+timeline.push(save_data);
 
 // Thank you end screen
 var end_screen ={
   type: jsPsychHtmlKeyboardResponse,
   stimulus: `<p><h2>Thank you for participating in this study!</h2></p>
              <p>Your SONA credit will be rewarded automatically.</p>
-             <p>Press any key to end the experiment.</p>`,
+             <p>Press enter key to end the experiment.</p>`,
+  choices: ['Enter']
   };
 timeline.push(end_screen);
 /* -------------------------------
