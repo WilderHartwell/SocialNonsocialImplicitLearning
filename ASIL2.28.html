@@ -187,6 +187,109 @@ const preloadImages = Array.from(new Set([...Simages,...O_groups.flat(),...Cimag
 const timeline = [];
 timeline.push({ type: jsPsychPreload, images: preloadImages });
 
+// ============================================================
+// MINIMUM RESPONSE TIME ENFORCEMENT (700ms)
+// Place this function definition near your other helpers
+// ============================================================
+
+const MIN_RT = 700; // milliseconds
+
+/**
+ * Wraps a jsPsychHtmlKeyboardResponse trial object to enforce a minimum RT.
+ * If the participant responds before MIN_RT ms, their keypress is cancelled,
+ * a "Too Fast!" warning flashes on screen, and the trial continues normally.
+ *
+ * @param {Object} trialObj - A jsPsychHtmlKeyboardResponse trial config object
+ * @returns {Object} - The same trial config, augmented with RT enforcement
+ */
+function withMinRT(trialObj) {
+  // Preserve any existing on_start / on_finish the trial may already have
+  const originalOnStart = trialObj.on_start || null;
+  const originalOnFinish = trialObj.on_finish || null;
+
+  return {
+    ...trialObj,
+
+    on_start: function(trial) {
+      // Record the exact moment the stimulus appeared
+      trial._onset = performance.now();
+
+      // ---- Inject "Too Fast!" overlay into the jspsych display ----
+      const display = document.getElementById('jspsych-content') ||
+                      document.querySelector('.jspsych-display-element') ||
+                      document.body;
+
+      // Create warning div (hidden initially)
+      const warning = document.createElement('div');
+      warning.id = 'too-fast-warning';
+      warning.innerHTML = '⚠️ Too Fast!';
+      warning.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(220, 30, 30, 0.92);
+        color: white;
+        font-size: 42px;
+        font-weight: bold;
+        padding: 24px 48px;
+        border-radius: 12px;
+        z-index: 99999;
+        display: none;
+        pointer-events: none;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        letter-spacing: 2px;
+      `;
+      document.body.appendChild(warning);
+
+      // ---- Block early keypresses ----
+      // jsPsych uses document-level keydown listeners.
+      // We intercept keypresses during the lockout window.
+      trial._tooFastHandler = function(e) {
+        const elapsed = performance.now() - trial._onset;
+        if (elapsed < MIN_RT) {
+          // Only block 'a' and 'l' (the response keys) — not Enter etc.
+          const key = e.key.toLowerCase();
+          if (key === 'a' || key === 'l') {
+            e.stopImmediatePropagation(); // prevent jsPsych from recording it
+
+            // Flash warning
+            const w = document.getElementById('too-fast-warning');
+            if (w) {
+              w.style.display = 'block';
+              clearTimeout(trial._warnTimeout);
+              trial._warnTimeout = setTimeout(() => {
+                if (w) w.style.display = 'none';
+              }, 600);
+            }
+          }
+        }
+      };
+
+      // Use capture phase so we intercept BEFORE jsPsych's listener
+      document.addEventListener('keydown', trial._tooFastHandler, true);
+
+      // Call original on_start if it existed
+      if (originalOnStart) originalOnStart.call(this, trial);
+    },
+
+    on_finish: function(data) {
+      // Clean up our keydown listener and warning element
+      if (data._tooFastHandler) {
+        document.removeEventListener('keydown', data._tooFastHandler, true);
+      }
+      const w = document.getElementById('too-fast-warning');
+      if (w) w.remove();
+
+      // Record whether the response was within the lockout window
+      data.too_fast = data.rt !== null && data.rt < MIN_RT;
+
+      // Call original on_finish if it existed
+      if (originalOnFinish) originalOnFinish.call(this, data);
+    }
+  };
+}
+
 // Consent form
 var consent = {
     type: jsPsychHtmlKeyboardResponse,
@@ -293,7 +396,7 @@ var social_instructions ={
              breaks in between.</p>
              <p>In addition to this task you're going to be shown five random numbers before every trial. Remember them, because after the trial you will be shown another number
              and asked to indicate (A = no, L = yes) whether that number was in the original set of five numbers. Please try your best even though you will <b>not</b> recieve feedback on your performance.</p>
-             <p> While both of these tasks move quickly, prioritize answering accurately. </p>
+             <p>While both of these tasks move quickly, prioritize answering accurately. If you answer too fast, a warning will pop up on screen and you'll have to answer again.</p>
              <p>Press the enter key to begin.</p>`,
   choices: ['Enter'],
   post_trial_gap: 2000};
@@ -308,7 +411,7 @@ var social_instructions ={
                 have short breaks in between.</p>
                 <p>In addition to this task you're going to be shown five random numbers before every trial. Remember them, because after the trial you will be shown another number
                 and asked to indicate (A = no, L = yes) whether that number was in the original set of five numbers. Please try your best even though you will <b>not</b> recieve feedback on your performance.</p>
-                <p> While both of these tasks move quickly, prioritize answering accurately. </p>
+                <p>While both of these tasks move quickly, prioritize answering accurately. If you answer too fast, a warning will pop up on screen and you'll have to answer again.</p>
                <p>Press the enter key to begin</p>`,
     post_trial_gap: 2000,
     choices: ['Enter']
@@ -417,7 +520,7 @@ for (let i = 0; i < S_repeated.length; i++) {
       },
 
       // 2. S/O COMBINED DISPLAY + RESPONSE
-      {
+      withMinRT({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
           <div style="display:flex;flex-direction:column;align-items:center;gap:40px;">
@@ -470,7 +573,7 @@ for (let i = 0; i < S_repeated.length; i++) {
           data.correct = data.response === correct_answer.toLowerCase();
           data.feedback_correct = data.response === sampled_outcome;
         }
-      },
+      }),
 
       // 3. S/O FEEDBACK
       {
@@ -616,7 +719,7 @@ for (let i = 0; i < S_test_repeated.length; i++) {
       },
 
       // 2. S/O TRIAL (no feedback)
-      {
+      withMinRT({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
           <div style="display:flex;flex-direction:column;align-items:center;gap:40px;">
@@ -669,7 +772,7 @@ for (let i = 0; i < S_test_repeated.length; i++) {
           }
           data.correct = data.response === correct_answer.toLowerCase();
         }
-      },
+      }),
 
       // 3. DIGIT PROBE (no S/O feedback in test block, but digit probe remains)
       {
@@ -794,7 +897,7 @@ for (let i = 0; i < C_repeated.length; i++) {
       },
 
       // 2. C/nO TRIAL
-      {
+      withMinRT({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
           <div style="display:flex;flex-direction:column;align-items:center;gap:40px;">
@@ -847,7 +950,7 @@ for (let i = 0; i < C_repeated.length; i++) {
           data.correct = data.response === correct_answer.toLowerCase();
           data.feedback_correct = data.response === sampled_outcome;
         }
-      },
+      }),
 
       // 3. C/nO FEEDBACK
       {
@@ -978,7 +1081,7 @@ for (let i = 0; i < C_test_repeated.length; i++) {
       },
 
       // 2. C/nO test TRIAL
-      {
+      withMinRT({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
           <div style="display:flex;flex-direction:column;align-items:center;gap:40px;">
@@ -1031,7 +1134,7 @@ for (let i = 0; i < C_test_repeated.length; i++) {
           }
           data.correct = data.response === correct_answer.toLowerCase();
         }
-      },
+      }),
 
       // 4. DIGIT PROBE
       {
